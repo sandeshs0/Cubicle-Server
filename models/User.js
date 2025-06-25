@@ -19,11 +19,20 @@ const UserSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ['designer', 'developer', 'writer', 'project manager', 'freelancer', 'unassigned'],
+        // enum: ['designer', 'developer', 'writer', 'project manager', 'freelancer', 'unassigned'],
         default: 'unassigned',
     },
     googleId: {
         type: String,
+    },
+    profileImage: {
+        type: String, // URL to the profile image
+        default: null,
+    },
+    plan: {
+        type: String,
+        enum: ['free', 'pro', 'vantage'],
+        default: 'free',
     },
     otp: {
         type: String,
@@ -55,5 +64,13 @@ UserSchema.pre('save', async function (next) {
 UserSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };
+
+// Create a virtual for full name that combines first and last name
+UserSchema.virtual('fullName').get(function() {
+    return this.name;
+});
+
+// Make virtuals available when converting to JSON
+UserSchema.set('toJSON', { virtuals: true });
 
 module.exports = mongoose.model('User', UserSchema);

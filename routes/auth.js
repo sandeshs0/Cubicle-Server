@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
+const { check } = require('express-validator');
+const userController = require('../controllers/userController');
 
 // Utility to generate a JWT
 const generateToken = (id) => {
@@ -49,6 +51,28 @@ router.get(
         // Redirect to the frontend with the token and isNewUser flag
         res.redirect(`${process.env.FRONTEND_URL}/OAuthCallback?token=${token}&isNewUser=${isNewUser}`);
     }
+);
+
+// @route   POST /api/auth/forgot-password
+// @desc    Forgot password - Generate reset token
+// @access  Public
+router.post(
+    '/forgot-password',
+    [
+        check('email', 'Please include a valid email').isEmail()
+    ],
+    userController.forgotPassword
+);
+
+// @route   PUT /api/auth/reset-password/:token
+// @desc    Reset password with token
+// @access  Public
+router.put(
+    '/reset-password/:token',
+    [
+        check('password', 'Please enter a password with 6 or more characters').isLength({ min: 6 })
+    ],
+    userController.resetPassword
 );
 
 module.exports = router;

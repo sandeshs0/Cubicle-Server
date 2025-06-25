@@ -16,6 +16,7 @@ module.exports = function (passport) {
                     name: profile.displayName,
                     email: profile.emails[0].value,
                     isVerified: true, // Google users are verified by default
+                    profileImage: profile.photos ? profile.photos[0].value : null
                 };
 
                 try {

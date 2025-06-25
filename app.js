@@ -23,7 +23,18 @@ app.use(passport.initialize());
 app.get('/', (req, res) => res.send('API Running'));
 
 // Define Routes
+const auth = require('./middleware/auth');
+
+// Public Routes
 app.use('/api/auth', require('./routes/auth'));
+
+// Protected Routes (require authentication)
+app.use('/api/users', auth, require('./routes/users'));
+app.use('/api/profile', auth, require('./routes/profile'));
+app.use('/api/clients', auth, require('./routes/clients'));
+app.use('/api/emails', auth, require('./routes/emails'));
+app.use('/api/email', auth, require('./routes/testEmail')); // Test email routes
+app.use('/api/projects', auth, require('./routes/projects'));
 
 const PORT = process.env.PORT || 5000;
 
