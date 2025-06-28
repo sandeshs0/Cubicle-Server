@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
+    console.log("Inside sendmail util: ")
     // 1) Create a transporter
     const transporter = nodemailer.createTransport({
         host: process.env.EMAIL_HOST,

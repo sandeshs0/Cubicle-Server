@@ -3,6 +3,7 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const Email = require('../models/Email');
+const EmailAccount = require('../models/EmailAccount');
 const { generateEmailTemplate } = require('../utils/emailTemplates');
 
 // Helper function to download file from URL
@@ -41,88 +42,97 @@ const downloadFile = (url) => {
     });
 };
 
-// Simple transporter - matching the OTP email approach
-const getTransporter = () => {
+// Get transporter based on user's email account or system default
+const getTransporter = async (userId = null) => {
     try {
-        const transporter = nodemailer.createTransport({
-            host: process.env.EMAIL_HOST,
-            port: process.env.EMAIL_PORT,
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            },
-            // tls: {
-            //     // Do not fail on invalid certs
-            //     rejectUnauthorized: false,
-            //     minVersion: 'TLSv1.2',
-            //     ciphers: 'SSLv3',
-            //     secureProtocol: 'TLSv1_2_method'
-            // },
-            // Connection settings
-            // pool: true, // Use connection pooling
-            // maxConnections: 3, // Reduced max connections
-            // maxMessages: 50, // Reduced max messages per connection
-            // connectionTimeout: 10000, // 10 seconds
-            // socketTimeout: 30000, // 30 seconds
-            // greetingTimeout: 10000, // 10 seconds
-            // Debug mode if needed
-            // debug: process.env.NODE_ENV === 'development',
-            // Disable using TLS if server doesn't support it
-            // ignoreTLS: process.env.EMAIL_IGNORE_TLS === 'true',
-            // Force use of TLS if needed
-            // requireTLS: process.env.EMAIL_REQUIRE_TLS !== 'false',
-            // Add keepalive
-            // dnsTimeout: 10000, // 10 seconds
-            // Add retry logic
-            // retryAttempts: 3,
-            // retryDelay: 1000 // 1 second
-        });
+        // If userId is provided, try to get user's default email account
+        console.log("searching for email account for userId: ",userId);
+        if (userId) {
+            const emailAccount = await EmailAccount.findOne({
+                user: userId,
+                // isDefault: true,
+                verified: true
+            }).select('+auth.pass'); // Include the encrypted password
 
-        // Add event listeners for better debugging
-        // transporter.on('idle', () => {
-        //     console.log('SMTP Connection is idle');
-        // });
+            console.log("emailAccount: ",emailAccount);
+            if (emailAccount) {
+                // const decryptedPass = emailAccount.decryptPassword();
+                console.log("found user custom email: ",emailAccount.auth);
+                if (emailAccount.auth.pass) {
+                    console.log(`Using custom email account: ${emailAccount.email}`);
+                    
+                    const customTransporter = nodemailer.createTransport({
+                        host: emailAccount.smtp.host,
+                        port: emailAccount.smtp.port,
+                        // secure: emailAccount.smtp.secure,
+                        auth: {
+                            user: emailAccount.auth.user,
+                            pass: emailAccount.auth.pass
+                        },
+                        // tls: {
+                        //     // Do not fail on invalid certs
+                        //     rejectUnauthorized: false
+                        // },
+                        // pool: true,
+                        // maxConnections: 5,
+                        // maxMessages: 100,
+                        // connectionTimeout: 10000, // 10 seconds
+                        // socketTimeout: 60000, // 60 seconds
+                        // greetingTimeout: 10000, // 10 seconds
+                        // // Add keepalive
+                        // dnsTimeout: 10000, // 10 seconds
+                        // // Add debug logging
+                        // debug: process.env.NODE_ENV === 'development'
+                    });
 
-        // transporter.on('error', (error) => {
-        //     console.error('SMTP Error:', error);
-        // });
+                    return {
+                        transporter: customTransporter,
+                        fromEmail: emailAccount.email,
+                        fromName: emailAccount.displayName,
+                        isCustom: true,
+                        accountId: emailAccount._id
+                    };
+                }
+            }
+        }
 
-        // Verify connection configuration with retry logic
-        // const verifyConnection = async (attempt = 1, maxAttempts = 3) => {
-        //     try {
-        //         await transporter.verify();
-        //         console.log('SMTP Server is ready to take our messages');
-        //         return true;
-        //     } catch (error) {
-        //         console.error(`SMTP Connection Error (Attempt ${attempt}/${maxAttempts}):`, error.message);
-        //         if (attempt >= maxAttempts) {
-        //             console.error('Max SMTP connection attempts reached');
-        //             return false;
-        //         }
-        //         // Wait before retrying
-        //         await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        //         return verifyConnection(attempt + 1, maxAttempts);
-        //     }
-        // };
-
-        // // Don't block the application if verification fails
-        // verifyConnection().catch(console.error);
-
-        return transporter;
+        // Fall back to system email
+        console.log('Using system default email account');
+        return {
+            transporter: nodemailer.createTransport({
+                host: process.env.EMAIL_HOST,
+                port: process.env.EMAIL_PORT,
+                // secure: process.env.EMAIL_SECURE === 'true',
+                // requireTLS:true,
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                },
+                // tls: {
+                    // rejectUnauthorized: false
+                // },
+                // connectionTimeout: 30000, // 30 seconds
+                // greetingTimeout: 30000,   // 30 seconds
+                // socketTimeout: 30000,     // 30 seconds
+                // debug: true,              // Enable debug output
+                logger: true  
+            }),
+            fromEmail: process.env.EMAIL_USER,
+            fromName: process.env.EMAIL_FROM_NAME || 'Cubicle',
+            isCustom: false
+        };
     } catch (error) {
         console.error('Error creating email transporter:', error);
-        return null;
+        throw error;
     }
 };
 
-const systemTransporter = getTransporter();
-
 class EmailService {
     /**
-     * Send an email using the system's SMTP server
+     * Send an email using either the user's custom SMTP or system's SMTP server
      * @param {Object} options - Email options
-     * @param {String} options.from - Sender email
-     * @param {String} options.fromName - Sender name
+     * @param {String} options.from - Sender email (optional, will use account email if not provided)
+     * @param {String} options.fromName - Sender name (optional, will use account display name if not provided)
      * @param {Array} options.to - Array of recipient objects with email and name
      * @param {String} options.subject - Email subject
      * @param {String} options.html - Email body (HTML)
@@ -130,11 +140,12 @@ class EmailService {
      * @param {String} userId - ID of the user sending the email
      * @param {String} projectId - Optional project ID
      * @param {String} clientId - Optional client ID
+     * @param {Array} options.attachments - Array of attachment objects
      * @returns {Promise<Object>} - Email sending result
      */
     static async sendEmail({
-        from = process.env.EMAIL_USER,
-        fromName = process.env.EMAIL_FROM_NAME || 'Cubicle',
+        from,
+        fromName,
         to,
         subject,
         html,
@@ -145,6 +156,9 @@ class EmailService {
         attachments = []
     }) {
         let emailRecord;
+        let emailTransporter;
+        let customEmailAccountId = null;
+        
         try {
             console.log('Starting email send process...');
             
@@ -159,6 +173,16 @@ class EmailService {
                 throw new Error('Email content is required');
             }
 
+            console.log('Getting email transporter...', userId);
+            // Get appropriate transporter (custom or system)
+            const transporterInfo = await getTransporter(userId);
+            emailTransporter = transporterInfo.transporter;
+            
+            // Set from email and name
+            const fromEmail = from || transporterInfo.fromEmail;
+            const senderName = fromName || transporterInfo.fromName;
+            customEmailAccountId = transporterInfo.isCustom ? transporterInfo.accountId : null;
+
             console.log('Creating email record...');
             // Create email record in database with 'draft' status initially
             emailRecord = new Email({
@@ -167,13 +191,15 @@ class EmailService {
                     email: recipient.email,
                     name: recipient.name || ''
                 })),
+                from: fromEmail,
+                fromName: senderName,
                 subject,
                 body: html || text,
                 project: projectId,
                 client: clientId,
-                status: 'draft',  // Start with 'draft' status
+                status: 'draft',  // Start with 'sending' status
                 sentAt: new Date(),
-                customEmailUsed: false,
+                customEmailAccount: customEmailAccountId,
                 attachments: attachments.map(file => ({
                     filename: file.filename,
                     path: file.path,
@@ -181,16 +207,13 @@ class EmailService {
                 }))
             });
             
-            // Save the draft first
-            await emailRecord.save();
-
             // Save the email record
             await emailRecord.save();
             console.log('Email record saved with ID:', emailRecord._id);
 
             // Generate formatted HTML email
             const emailHtml = generateEmailTemplate({
-                senderName: fromName,
+                senderName: senderName,
                 message: html || text,
                 footerText: 'This email was sent from Cubicle CRM.'
             });
@@ -251,53 +274,49 @@ class EmailService {
 
             // Prepare email options for nodemailer
             const mailOptions = {
-                from: `\"${fromName} via Cubicle\" <${from}>`,
+                from: `"${senderName}" <${fromEmail}>`,
                 to: to.map(recipient => recipient.email).join(', '),
                 subject: subject,
-                text: text || (html ? html.replace(/<[^>]*>?/gm, '') : ''), // Plain text version
+                text: text || (html ? html.replace(/<[^>]*>?/gm, '') : ''),
                 html: emailHtml,
                 attachments: emailAttachments.length > 0 ? emailAttachments : undefined
             };
 
             console.log('Sending email with options:', {
+                from: mailOptions.from,
                 to: mailOptions.to,
                 subject: mailOptions.subject,
-                attachmentCount: emailAttachments.length
+                attachmentCount: emailAttachments.length,
+                usingCustomAccount: !!customEmailAccountId
             });
 
-            try {
-                // Send the email with a timeout
-                const sendEmailPromise = systemTransporter.sendMail(mailOptions);
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Email sending timed out after 30 seconds')), 50000)
-                );
-                
-                const info = await Promise.race([sendEmailPromise, timeoutPromise]);
-                console.log('Email sent successfully, messageId:', info.messageId);
+            // Send the email with a timeout
+            const sendEmailPromise = emailTransporter.sendMail(mailOptions);
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Email sending timed out after 50 seconds')), 50000)
+            );
+            
+            const info = await Promise.race([sendEmailPromise, timeoutPromise]);
+            console.log('Email sent successfully, messageId:', info.messageId);
 
-                // Update email status to sent
-                emailRecord.status = 'sent';
-                emailRecord.sentAt = new Date();
-                emailRecord.messageId = info.messageId;
-                await emailRecord.save();
+            // Update email status to sent
+            emailRecord.status = 'sent';
+            emailRecord.sentAt = new Date();
+            emailRecord.messageId = info.messageId;
+            await emailRecord.save();
 
-                // Clean up downloaded files
-                cleanupFiles.forEach(cleanup => cleanup());
+            // Clean up downloaded files
+            cleanupFiles.forEach(cleanup => cleanup());
 
-                return {
-                    success: true,
-                    message: 'Email sent successfully',
-                    emailId: emailRecord._id,
-                    messageId: info.messageId
-                };
-            } catch (error) {
-                console.error('Error sending email:', error);
-                // Clean up any downloaded files even if sending fails
-                cleanupFiles.forEach(cleanup => cleanup());
-                throw error;
-            }
+            return {
+                success: true,
+                message: 'Email sent successfully',
+                emailId: emailRecord._id,
+                messageId: info.messageId,
+                usedCustomAccount: !!customEmailAccountId
+            };
         } catch (error) {
-            console.error('Error sending email:', error);
+            console.error('Error in email service:', error);
             
             // Update the email record with error status if it was created
             if (emailRecord) {
@@ -314,30 +333,48 @@ class EmailService {
                 }
             }
             
+            // If the error is related to custom email account, try with system account
+            if (customEmailAccountId && error.code && ['EAUTH', 'EENVELOPE', 'ECONNECTION'].includes(error.code)) {
+                console.log('Custom email account failed, retrying with system account...');
+                return this.sendEmail({
+                    from: process.env.EMAIL_USER,
+                    fromName: process.env.EMAIL_FROM_NAME,
+                    to,
+                    subject: `[System] ${subject}`, // Add prefix to indicate system-sent
+                    html,
+                    text,
+                    userId,
+                    projectId,
+                    clientId,
+                    attachments
+                });
+            }
+            
             // Re-throw the error to be handled by the controller
             throw error;
         }
     }
 
-    /**
-     * Get emails sent by a user
-     * @param {String} userId - User ID
-     * @param {Object} options - Query options (limit, page, etc.)
-     * @returns {Promise<Array>} - List of emails
-     */
+    // ... rest of the class methods remain the same ...
     static async getUserEmails(userId, { limit = 10, page = 1, status } = {}) {
         try {
             const query = { sender: userId };
             if (status) query.status = status;
 
+            const total = await Email.countDocuments(query);
+            
             const emails = await Email.find(query)
                 .sort({ createdAt: -1 })
                 .skip((page - 1) * limit)
                 .limit(parseInt(limit))
                 .populate('project', 'name')
-                .populate('client', 'name email');
+                .populate('client', 'name email')
+                .populate({
+                    path:'customEmailAccount',
+                    select:'email displayName',
+                    options:{strictPopulate:false}}
+                );
 
-            const total = await Email.countDocuments(query);
 
             return {
                 emails,
@@ -354,12 +391,6 @@ class EmailService {
         }
     }
 
-    /**
-     * Get email details by ID
-     * @param {String} emailId - Email ID
-     * @param {String} userId - User ID for authorization
-     * @returns {Promise<Object>} - Email details
-     */
     static async getEmailById(emailId, userId) {
         try {
             const email = await Email.findOne({
@@ -367,7 +398,12 @@ class EmailService {
                 sender: userId
             })
             .populate('project', 'name')
-            .populate('client', 'name email');
+            .populate('client', 'name email')
+            .populate({
+                path:'customEmailAccount',
+                select:'email displayName smtp.host',
+                options:{strictPopulate:false}
+            });
 
             if (!email) {
                 throw new Error('Email not found or access denied');

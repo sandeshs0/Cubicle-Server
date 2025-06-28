@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
 const EmailSchema = new mongoose.Schema({
     sender: {
@@ -44,6 +45,10 @@ const EmailSchema = new mongoose.Schema({
     customEmailUsed: {
         type: Boolean,
         default: false
+    },
+    customEmailAccount: {
+        type: Schema.Types.ObjectId,
+        ref: 'EmailAccount'
     },
     attachments: [{
         filename: String,

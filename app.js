@@ -35,6 +35,8 @@ app.use('/api/clients', auth, require('./routes/clients'));
 app.use('/api/emails', auth, require('./routes/emails'));
 app.use('/api/email', auth, require('./routes/testEmail')); // Test email routes
 app.use('/api/projects', auth, require('./routes/projects'));
+app.use('/api/email-accounts', auth, require('./routes/emailAccounts'));
+app.use('/api/ai', auth, require('./routes/ai'));
 
 const PORT = process.env.PORT || 5000;
 

@@ -38,7 +38,7 @@ exports.register = async (req, res) => {
 
         // Send OTP to user's email
         const message = `Your OTP for Cubicle verification is: ${otp}\nThis code will expire in 10 minutes.`;
-
+        console.log("Sending OTP for verification")
         await sendEmail({
             email: user.email,
             subject: 'Email Verification - Cubicle',
