@@ -235,7 +235,7 @@ exports.moveTask = async (req, res) => {
       if (!task) {
         return res.status(404).json({ 
           success: false, 
-          message: 'Task not found' 
+          message: 'Task not found'
         });
       }
   
