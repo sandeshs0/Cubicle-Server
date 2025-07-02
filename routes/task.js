@@ -15,9 +15,9 @@ router.post(
       check('title', 'Title is required').not().isEmpty(),
       check('columnId', 'Column ID is required').isMongoId(),
       check('boardId', 'Board ID is required').isMongoId(),
-      check('priority', 'Priority must be low, medium, or high')
+      check('priority', 'Priority must be low, medium, high or critical')
         .optional()
-        .isIn(['low', 'medium', 'high']),
+        .isIn(['low', 'medium', 'high', "critical"]),
       check('assignedTo', 'Assigned users must be an array of user IDs')
         .optional()
         .isArray(),
@@ -44,9 +44,9 @@ router.put(
       check('columnId', 'Column ID must be a valid MongoDB ID')
         .optional()
         .isMongoId(),
-      check('priority', 'Priority must be low, medium, or high')
+      check('priority', 'Priority must be low, medium, high or critical')
         .optional()
-        .isIn(['low', 'medium', 'high']),
+        .isIn(['low', 'medium', 'high', "critical"]),
       check('assignedTo', 'Assigned users must be an array of user IDs')
         .optional()
         .isArray(),
@@ -74,6 +74,15 @@ router.put(
     ]
   ],
   taskController.moveTask
+);
+
+// @route   PUT /api/tasks/:taskId/subtasks/:subtaskId/toggle
+// @desc    Toggle subtask completion status
+// @access  Private
+router.put(
+  '/:taskId/subtasks/:subtaskId/toggle',
+  auth,
+  taskController.toggleSubtask
 );
 
 module.exports = router;

@@ -22,7 +22,9 @@ exports.createTask = async (req, res) => {
       dueDate, 
       priority, 
       assignedTo = [],
-      labels = [] 
+      labels = [] ,
+      subtasks = [],
+      coverImage=null
     } = req.body;
 
     // Verify user has access to the board
@@ -67,6 +69,11 @@ exports.createTask = async (req, res) => {
       dueDate,
       priority,
       labels,
+      subtasks: subtasks.map(st=>({
+        title: st.title,
+        isCompleted: st.isCompleted || false
+      })),
+      coverImage,
       position: lastTask ? lastTask.position + 1 : 0
     });
 
@@ -122,6 +129,72 @@ exports.getTask = async (req, res) => {
 // @desc    Update a task
 // @route   PUT /api/tasks/:id
 // @access  Private
+// exports.updateTask = async (req, res) => {
+//   const errors = validationResult(req);
+//   if (!errors.isEmpty()) {
+//     return res.status(400).json({ errors: errors.array() });
+//   }
+
+//   try {
+//     const task = await Task.findById(req.params.id);
+//     if (!task) {
+//       return res.status(404).json({ 
+//         success: false, 
+//         message: 'Task not found' 
+//       });
+//     }
+
+//     // Verify user has access to the board
+//     const board = await Board.findOne({
+//       _id: task.boardId,
+//       'members.userId': req.user.id
+//     });
+
+//     if (!board) {
+//       return res.status(403).json({ 
+//         success: false, 
+//         message: 'Not authorized to update this task' 
+//       });
+//     }
+
+//     // Update fields
+//     const updates = {};
+//     const allowedUpdates = [
+//       'title', 'description', 'columnId', 'dueDate', 'priority', 
+//       'assignedTo', 'labels', 'coverImage'
+//     ];
+
+//     allowedUpdates.forEach(field => {
+//       if (req.body[field] !== undefined) {
+//         updates[field] = req.body[field];
+//       }
+//     });
+
+//     // If changing columns, update the position to the end of the new column
+//     if (updates.columnId) {
+//       const lastTask = await Task.findOne({ columnId: updates.columnId })
+//         .sort('-position')
+//         .select('position')
+//         .lean();
+
+//       updates.position = lastTask ? lastTask.position + 1 : 0;
+//     }
+
+//     const updatedTask = await Task.findByIdAndUpdate(
+//       req.params.id,
+//       { $set: updates },
+//       { new: true }
+//     )
+//       .populate('createdBy', 'name email')
+//       .populate('assignedTo', 'name email');
+
+//     res.json({ success: true, data: updatedTask });
+//   } catch (error) {
+//     console.error('Error updating task:', error);
+//     res.status(500).json({ success: false, message: 'Server error' });
+//   }
+// };
+
 exports.updateTask = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -151,42 +224,75 @@ exports.updateTask = async (req, res) => {
     }
 
     // Update fields
-    const updates = {};
-    const allowedUpdates = [
-      'title', 'description', 'columnId', 'dueDate', 'priority', 
-      'assignedTo', 'labels', 'coverImage'
-    ];
+    const {
+      title,
+      description,
+      columnId,
+      dueDate,
+      priority,
+      assignedTo,
+      labels,
+      subtasks,
+      coverImage
+    } = req.body;
 
-    allowedUpdates.forEach(field => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
+    if (title) task.title = title;
+    if (description !== undefined) task.description = description;
+    if (dueDate !== undefined) task.dueDate = dueDate;
+    if (priority) task.priority = priority;
+    if (assignedTo !== undefined) task.assignedTo = assignedTo;
+    if (labels !== undefined) task.labels = labels;
+    if (subtasks !== undefined) {
+      task.subtasks = subtasks.map(st => ({
+        _id: st._id || new mongoose.Types.ObjectId(),
+        title: st.title,
+        isCompleted: st.isCompleted || false
+      }));
+    }
+    if (coverImage !== undefined) task.coverImage = coverImage;
+
+    // If changing columns, update position to the end of the new column
+    if (columnId && columnId !== task.columnId.toString()) {
+      const newColumn = await Column.findOne({
+        _id: columnId,
+        boardId: task.boardId
+      });
+
+      if (!newColumn) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid column' 
+        });
       }
-    });
 
-    // If changing columns, update the position to the end of the new column
-    if (updates.columnId) {
-      const lastTask = await Task.findOne({ columnId: updates.columnId })
+      const lastTask = await Task.findOne({ columnId })
         .sort('-position')
         .select('position')
         .lean();
 
-      updates.position = lastTask ? lastTask.position + 1 : 0;
+      task.columnId = columnId;
+      task.position = lastTask ? lastTask.position + 1 : 0;
     }
 
-    const updatedTask = await Task.findByIdAndUpdate(
-      req.params.id,
-      { $set: updates },
-      { new: true }
-    )
+    const updatedTask = await task.save();
+    const populatedTask = await Task.findById(updatedTask._id)
       .populate('createdBy', 'name email')
       .populate('assignedTo', 'name email');
 
-    res.json({ success: true, data: updatedTask });
+    res.json({ 
+      success: true, 
+      data: populatedTask 
+    });
   } catch (error) {
     console.error('Error updating task:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error',
+      error: error.message 
+    });
   }
 };
+
 
 // @desc    Delete a task
 // @route   DELETE /api/tasks/:id
@@ -221,6 +327,72 @@ exports.deleteTask = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+
+// @desc    Toggle subtask completion status
+// @route   PUT /api/tasks/:taskId/subtasks/:subtaskId/toggle
+// @access  Private
+exports.toggleSubtask = async (req, res) => {
+  try {
+    const task = await Task.findOne({
+      _id: req.params.taskId,
+      'subtasks._id': req.params.subtaskId
+    });
+
+    if (!task) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Task or subtask not found' 
+      });
+    }
+
+    // Verify user has access to the board
+    const board = await Board.findOne({
+      _id: task.boardId,
+      'members.userId': req.user.id
+    });
+
+    if (!board) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Not authorized to update this task' 
+      });
+    }
+
+    // Toggle the subtask's completion status
+    const subtask = task.subtasks.id(req.params.subtaskId);
+    if (!subtask) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Subtask not found' 
+      });
+    }
+
+    subtask.isCompleted = !subtask.isCompleted;
+    await task.save();
+
+    // Get the updated task with populated fields
+    const updatedTask = await Task.findById(task._id)
+      .populate('createdBy', 'name email')
+      .populate('assignedTo', 'name email');
+
+    res.json({ 
+      success: true, 
+      data: {
+        task: updatedTask,
+        completion: updatedTask.completion
+      } 
+    });
+  } catch (error) {
+    console.error('Error toggling subtask:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+};
+
 
 // @desc    Move a task to a different column
 // @route   PUT /api/tasks/:id/move
