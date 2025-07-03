@@ -45,6 +45,10 @@ const EmailSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    openedAt: {
+      type: Date,
+      default: null,
+    },
     sentAt: {
       type: Date,
       default: null,
