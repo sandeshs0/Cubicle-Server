@@ -3,6 +3,7 @@ const router = express.Router();
 const { check } = require('express-validator');
 const auth = require('../middleware/auth');
 const taskController = require('../controllers/taskController');
+const { uploadTaskCover } = require('../middleware/upload');
 
 // @route   POST /api/tasks
 // @desc    Create a new task
@@ -11,13 +12,14 @@ router.post(
   '/',
   [
     auth,
+    uploadTaskCover,
     [
       check('title', 'Title is required').not().isEmpty(),
       check('columnId', 'Column ID is required').isMongoId(),
       check('boardId', 'Board ID is required').isMongoId(),
       check('priority', 'Priority must be low, medium, high or critical')
         .optional()
-        .isIn(['low', 'medium', 'high', "critical"]),
+        .isIn(['low', 'medium', 'high', 'critical']),
       check('assignedTo', 'Assigned users must be an array of user IDs')
         .optional()
         .isArray(),
@@ -39,6 +41,7 @@ router.put(
   '/:id',
   [
     auth,
+    uploadTaskCover,
     [
       check('title', 'Title is required').optional().not().isEmpty(),
       check('columnId', 'Column ID must be a valid MongoDB ID')
@@ -46,7 +49,7 @@ router.put(
         .isMongoId(),
       check('priority', 'Priority must be low, medium, high or critical')
         .optional()
-        .isIn(['low', 'medium', 'high', "critical"]),
+        .isIn(['low', 'medium', 'high', 'critical']),
       check('assignedTo', 'Assigned users must be an array of user IDs')
         .optional()
         .isArray(),
@@ -84,5 +87,7 @@ router.put(
   auth,
   taskController.toggleSubtask
 );
+
+
 
 module.exports = router;

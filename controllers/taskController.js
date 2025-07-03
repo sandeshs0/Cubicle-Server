@@ -3,6 +3,17 @@ const Board = require('../models/Board');
 const Column = require('../models/Column');
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
+const { deleteFile } = require('../middleware/upload');
+
+
+const parseJsonField = (field) => {
+  try {
+    return field ? JSON.parse(field) : undefined;
+  } catch (error) {
+    return undefined;
+  }
+};
+
 
 // @desc    Create a new task
 // @route   POST /api/tasks
@@ -14,6 +25,17 @@ exports.createTask = async (req, res) => {
   }
 
   try {
+
+    const parseField = (field) => {
+      if (!field) return undefined;
+      try {
+        return typeof field === 'string' ? JSON.parse(field) : field;
+      } catch (e) {
+        console.error('Error parsing field:', field, e);
+        return undefined;
+      }
+    };
+
     const { 
       title, 
       description, 
@@ -21,11 +43,19 @@ exports.createTask = async (req, res) => {
       boardId, 
       dueDate, 
       priority, 
-      assignedTo = [],
-      labels = [] ,
-      subtasks = [],
-      coverImage=null
+      // assignedTo = [],
+      // labels = [] ,
+      // subtasks = [],
+      // coverImage=null,
+      
     } = req.body;
+
+
+    // Parsing JSON fields
+    const assignedTo = parseField(req.body.assignedTo) || [];
+    const labels = parseField(req.body.labels) || [];
+    const subtasks = parseField(req.body.subtasks) || [];
+    
 
     // Verify user has access to the board
     const board = await Board.findOne({
@@ -73,7 +103,7 @@ exports.createTask = async (req, res) => {
         title: st.title,
         isCompleted: st.isCompleted || false
       })),
-      coverImage,
+      coverImage:req.file ? req.file.path : null,
       position: lastTask ? lastTask.position + 1 : 0
     });
 
@@ -233,7 +263,7 @@ exports.updateTask = async (req, res) => {
       assignedTo,
       labels,
       subtasks,
-      coverImage
+      // coverImage
     } = req.body;
 
     if (title) task.title = title;
@@ -249,7 +279,14 @@ exports.updateTask = async (req, res) => {
         isCompleted: st.isCompleted || false
       }));
     }
-    if (coverImage !== undefined) task.coverImage = coverImage;
+    // if (req.file) {
+    //   // Delete old cover image if it exists
+    //   if (task.coverImage) {
+    //     await deleteFile(task.coverImage);
+    //   }
+    //   task.coverImage = req.file.path;
+    // }
+
 
     // If changing columns, update position to the end of the new column
     if (columnId && columnId !== task.columnId.toString()) {
@@ -259,6 +296,7 @@ exports.updateTask = async (req, res) => {
       });
 
       if (!newColumn) {
+        if (req.file) await deleteFile(req.file.path);
         return res.status(400).json({ 
           success: false, 
           message: 'Invalid column' 

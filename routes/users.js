@@ -36,7 +36,7 @@ router.put(
 router.put(
     '/me/avatar',
     auth,
-    userController.updateProfilePicture
+    userController.updateProfilePicture 
 );
 
 // @route   PUT /api/users/change-password

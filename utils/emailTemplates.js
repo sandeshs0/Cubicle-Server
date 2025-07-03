@@ -6,8 +6,8 @@
  * @param {string} [options.footerText=''] - Additional footer text
  * @returns {string} - Formatted HTML email
  */
-const generateEmailTemplate = ({ senderName, message, footerText = '' }) => {
-    return `
+const generateEmailTemplate = ({ senderName, message, footerText = "" }) => {
+  return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -94,7 +94,12 @@ const generateEmailTemplate = ({ senderName, message, footerText = '' }) => {
         </div>
         
         <div class="footer">
-            ${footerText ? `<div style="margin-bottom: 10px;">${footerText}</div>` : ''}
+        <img src="http://localhost:5000/api/email/track" height="1" width="1">
+            ${
+              footerText
+                ? `<div style="margin-bottom: 10px;">${footerText}</div>`
+                : ""
+            }
             <div>© ${new Date().getFullYear()} Cubicle. All rights reserved.</div>
         </div>
     </body>
@@ -103,5 +108,5 @@ const generateEmailTemplate = ({ senderName, message, footerText = '' }) => {
 };
 
 module.exports = {
-    generateEmailTemplate
+  generateEmailTemplate,
 };

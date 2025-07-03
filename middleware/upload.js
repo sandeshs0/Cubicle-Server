@@ -2,6 +2,7 @@ const path = require('path');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const fs = require('fs').promises;
 
 // Configure Cloudinary storage
 const storage = new CloudinaryStorage({
@@ -158,6 +159,43 @@ const uploadEmailAttachments = (req, res, next) => {
     });
 };
 
+
+
+const taskCoverStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+      folder: 'cubicle/task-covers',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      transformation: [{ width: 1200, height: 630, crop: 'fill' }]
+    }
+  });
+
+
+  const uploadTaskCover = multer({ 
+    storage: taskCoverStorage,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+      files: 1
+    },
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed!'), false);
+      }
+    }
+  }).single('coverImage');
+
+
+  const deleteFile = async (filePath) => {
+    try {
+      await fs.unlink(filePath);
+      console.log(`Deleted file: ${filePath}`);
+    } catch (error) {
+      console.error(`Error deleting file ${filePath}:`, error);
+    }
+  };
+
 // Export upload middleware
 module.exports = {
     uploadFile: upload.single('profileImage'),
@@ -165,5 +203,7 @@ module.exports = {
     uploadCoverImage,
     uploadEmailAttachments: [uploadEmailAttachments, processUpload], // Add processUpload to the middleware chain
     uploadMultiple: uploadMultiple, // Also export the raw multer instance if needed
-    processUpload
+    processUpload,
+    uploadTaskCover,
+    deleteFile
 };

@@ -13,4 +13,9 @@ router.get('/test/connection', auth, testSMTPConnection);
 // @access  Private
 router.post('/test/send', auth, sendTestEmail);
 
+router.get('/track',(req,res) => {
+    console.log("Track");
+    res.json({success:true,message:"Track"})
+  });
+  
 module.exports = router;
