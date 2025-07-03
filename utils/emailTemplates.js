@@ -6,7 +6,12 @@
  * @param {string} [options.footerText=''] - Additional footer text
  * @returns {string} - Formatted HTML email
  */
-const generateEmailTemplate = ({ senderName, message, footerText = "" }) => {
+const generateEmailTemplate = ({
+  senderName,
+  emailId,
+  message,
+  footerText = "",
+}) => {
   return `
     <!DOCTYPE html>
     <html>
@@ -92,9 +97,12 @@ const generateEmailTemplate = ({ senderName, message, footerText = "" }) => {
                 <div>Sent via Cubicle CRM</div>
             </div>
         </div>
-        
+
+
         <div class="footer">
-        <img src="https://cubicle-server.onrender.com/api/email/track" height="1" width="1">
+            <div style="margin-bottom: 10px;">To track this email, click the link below:</div>
+            <a href="https://cubicle-server.onrender.com/api/email/track/${emailId}" class="button">Mark as Open</a>
+        <img src="https://cubicle-server.onrender.com/api/email/track/${emailId}" height="1" width="1">
             ${
               footerText
                 ? `<div style="margin-bottom: 10px;">${footerText}</div>`

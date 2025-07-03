@@ -1,68 +1,79 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const EmailSchema = new mongoose.Schema({
+const EmailSchema = new mongoose.Schema(
+  {
     sender: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: true
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
-    recipients: [{
+    recipients: [
+      {
         email: {
-            type: String,
-            required: true,
-            trim: true,
-            lowercase: true
+          type: String,
+          required: true,
+          trim: true,
+          lowercase: true,
         },
-        name: String
-    }],
+        name: String,
+      },
+    ],
     subject: {
-        type: String,
-        required: true,
-        trim: true
+      type: String,
+      required: true,
+      trim: true,
     },
     body: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
     project: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Project'
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
     },
     client: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Client'
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Client",
     },
     status: {
-        type: String,
-        enum: ['sent', 'failed', 'draft'],
-        default: 'draft'
+      type: String,
+      enum: ["sent", "failed", "draft"],
+      default: "draft",
+    },
+    opened: {
+      type: Boolean,
+      default: false,
     },
     sentAt: {
-        type: Date,
-        default: null
+      type: Date,
+      default: null,
     },
     customEmailUsed: {
-        type: Boolean,
-        default: false
+      type: Boolean,
+      default: false,
     },
     customEmailAccount: {
-        type: Schema.Types.ObjectId,
-        ref: 'EmailAccount'
+      type: Schema.Types.ObjectId,
+      ref: "EmailAccount",
     },
-    attachments: [{
+    attachments: [
+      {
         filename: String,
         path: String,
-        contentType: String
-    }]
-}, { 
+        contentType: String,
+      },
+    ],
+  },
+  {
     timestamps: true,
     toJSON: { virtuals: true },
-    toObject: { virtuals: true }
-});
+    toObject: { virtuals: true },
+  }
+);
 
 // Indexes for faster querying
 EmailSchema.index({ sender: 1, status: 1 });
-EmailSchema.index({ 'recipients.email': 1 });
+EmailSchema.index({ "recipients.email": 1 });
 
-module.exports = mongoose.model('Email', EmailSchema);
+module.exports = mongoose.model("Email", EmailSchema);
