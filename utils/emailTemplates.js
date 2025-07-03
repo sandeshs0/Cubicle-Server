@@ -94,7 +94,7 @@ const generateEmailTemplate = ({ senderName, message, footerText = "" }) => {
         </div>
         
         <div class="footer">
-        <img src="http://localhost:5000/api/email/track" height="1" width="1">
+        <img src="https://cubicle-server.onrender.com/api/email/track" height="1" width="1">
             ${
               footerText
                 ? `<div style="margin-bottom: 10px;">${footerText}</div>`

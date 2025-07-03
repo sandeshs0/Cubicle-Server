@@ -24,7 +24,7 @@ exports.rewriteEmail = async (req, res) => {
       Focus on clarity, professionalism, and impact.
       The content is being sent by a freelancer to their client.
       Return only the rewritten text, no additional commentary.
-
+       
       Original text: "${text}"
 
       Rewritten text:`;
