@@ -1,8 +1,7 @@
 const Invoice = require('../models/Invoice');
 const Client = require('../models/Client');
 const User = require('../models/User');
-const { sendEmail } = require('../services/emailService');
-const { generateInvoiceTemplate } = require('../utils/emailTemplates');
+const { sendPlainEmail } = require('../services/emailService');
 
 // @desc    Create a new invoice
 // @route   POST /api/invoices
@@ -332,15 +331,14 @@ exports.sendInvoice = async (req, res) => {
       name: invoice.client?.name || 'Client'
     }];
 
-    // Send email
-    await sendEmail({
+    // Send email using the simple email service
+    await sendPlainEmail({
       to: recipient,
       subject: subject || `Invoice #${invoice.invoiceNumber} from ${invoice.user?.name || 'Your Company'}`,
       html: emailContent,
       trackingId: invoice.trackingId,
-      userId: req.user.id,
-      clientId: invoice.client?._id || null,
-      projectId: invoice.project || null
+      fromName: invoice.user?.name || 'Your Company',
+      userId: invoice.user?.id
     });
     
     // Update invoice status and last sent date

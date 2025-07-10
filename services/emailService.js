@@ -5,6 +5,7 @@ const path = require("path");
 const Email = require("../models/Email");
 const EmailAccount = require("../models/EmailAccount");
 const { generateEmailTemplate } = require("../utils/emailTemplates");
+const { transporter } = require("../services/emailService");
 
 // Helper function to download file from URL
 const downloadFile = (url) => {
@@ -441,6 +442,83 @@ class EmailService {
       throw error;
     }
   }
+
+  /**
+   * Simple email sending function without templates or database records
+   * @param {Object} options - Email options
+   * @param {String|Array} options.to - Recipient email(s)
+   * @param {String} options.subject - Email subject
+   * @param {String} options.html - Email HTML content
+   * @param {String} [options.from] - Sender email
+   * @param {String} [options.fromName] - Sender name
+   * @param {String} [options.trackingId] - Optional tracking ID
+   * @param {String} [options.userId] - Optional user ID for custom email account
+   * @returns {Promise<Object>} - Send result
+   */
+  static sendPlainEmail = async ({
+    to,
+    subject,
+    html,
+    from,
+    fromName,
+    trackingId,
+    userId
+  }) => {
+    try {
+      console.log('Sending plain email...');
+      
+      // Get appropriate transporter (custom or system)
+      const transporterInfo = await getTransporter(userId);
+      // const { transporter, fromEmail, fromName: systemFromName } = transporterInfo;
+      const transporter=transporterInfo.transporter;
+
+      const fromEmail =transporterInfo.fromEmail;
+      const fromName= transporterInfo.fromName;
+
+
+      // Use provided from/name or fall back to system/account defaults
+
+
+      const senderEmail = from || fromEmail;
+      const senderName = fromName || systemFromName;
+      
+      // Format recipients - handle both string and array of objects
+      const formatRecipients = (recipients) => {
+        if (!Array.isArray(recipients)) return recipients;
+        return recipients.map(r => typeof r === 'string' ? r : r.email || '').filter(Boolean).join(', ');
+      };
+      
+      // Prepare email options
+      const mailOptions = {
+        from: `"${senderName}" <${senderEmail}>`,
+        to: formatRecipients(to),
+        subject,
+        html,
+        // Add tracking headers if trackingId is provided
+        ...(trackingId && {
+          headers: {
+            'X-Tracking-ID': trackingId,
+            ...(transporterInfo.messageId && { 'Message-ID': transporterInfo.messageId })
+          }
+        })
+      };
+      
+      // Send the email
+      const info = await transporter.sendMail(mailOptions);
+      console.log('Email sent:', info.messageId);
+      
+      return {
+        success: true,
+        messageId: info.messageId,
+        customEmailUsed: !!transporterInfo.isCustom
+      };
+    } catch (error) {
+      console.error('Error sending plain email:', error);
+      throw error;
+    }
+  }
+
 }
+
 
 module.exports = EmailService;
