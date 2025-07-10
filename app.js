@@ -40,7 +40,7 @@ app.use('/api/ai', auth, require('./routes/ai'));
 app.use('/api/boards', auth, require('./routes/board'));
 app.use('/api/columns', auth, require('./routes/column'));
 app.use('/api/tasks', auth, require('./routes/task'));
-app.use('/api/invoices', auth, require('./routes/invoices'));
+app.use('/api/invoices', require('./routes/invoices'));
 
 const PORT = process.env.PORT || 5000;
 
