@@ -33,8 +33,10 @@ router.get("/track/:id", async (req, res) => {
       },
       { new: true }
     );
+    console.log(updatedEmail);
+    console.log(updatedEmail.sender.name);
     await createNotification({
-      user: updatedEmail.sender.name,
+      user: updatedEmail.sender._id,
       type: 'email_opened',
       message: `Email was opened: ${updatedEmail.subject}`,
       data: { emailId: updatedEmail._id }
