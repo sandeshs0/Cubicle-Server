@@ -106,8 +106,8 @@ const generateEmailTemplate = ({
 
           <div class="footer">
               <div style="margin-bottom: 10px;">To track this email, click the link below:</div>
-              <a href="https://cubicle-server.onrender.com/api/email/track/{{trackingId}}" class="button">Mark as Open</a>
-              <img src="https://cubicle-server.onrender.com/api/email/track/{{trackingId}}" height="1" width="1">
+              <a href="https://cubicle-server.onrender.com/api/email/track/${trackingId}" class="button">Mark as Open</a>
+              <img src="https://cubicle-server.onrender.com/api/email/track/${trackingId}" height="1" width="1">
               ${footerText ? `<div style="margin-bottom: 10px;">${footerText}</div>` : ""}
             <div> 2023 Cubicle. All rights reserved.</div>
         </div>
