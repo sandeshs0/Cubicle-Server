@@ -32,6 +32,12 @@ router.get("/track/:id", async (req, res) => {
       },
       { new: true }
     );
+    await createNotification({
+      user: updatedEmail.sender.name,
+      type: 'email_opened',
+      message: `Email was opened: ${updatedEmail.subject}`,
+      data: { emailId: updatedEmail._id }
+    });
 
     if (!updatedEmail) {
       return res.status(404).json({ success: false, message: "Email not found" });
