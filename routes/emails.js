@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const emailStatsController = require('../controllers/emailStatsController');
 const { check, body } = require('express-validator');
 const emailController = require('../controllers/emailController');
 const auth = require('../middleware/auth');
@@ -87,6 +88,9 @@ router.get(
     ],
     emailController.getUserEmails  // Fixed: Changed from getSentEmails to getUserEmails
 );
+
+// Email statistics
+router.get('/stats', require('../middleware/auth'), emailStatsController.getEmailStats);
 
 // @route   GET /api/emails/:id
 // @desc    Get email by ID

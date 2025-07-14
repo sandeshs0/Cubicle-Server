@@ -437,10 +437,12 @@ exports.trackInvoiceView = async (req, res) => {
 // @desc    Get invoice statistics
 // @route   GET /api/invoices/stats
 // @access  Private
+const mongoose = require('mongoose');
 exports.getInvoiceStats = async (req, res) => {
   try {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const stats = await Invoice.aggregate([
-      { $match: { user: req.user._id } },
+      { $match: { user: userId } },
       {
         $group: {
           _id: null,

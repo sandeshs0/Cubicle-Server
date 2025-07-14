@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const  auth  = require('../middleware/auth');
 const invoiceController = require('../controllers/invoiceController');
+const  auth  = require('../middleware/auth');
 
+
+router.get('/stats', auth, invoiceController.getInvoiceStats);
 
 // Invoice routes
 router
@@ -16,16 +18,16 @@ router
   .put(auth, invoiceController.updateInvoice)
   .delete(auth, invoiceController.deleteInvoice);
 
-// Log payment for an invoice
-router.post('/:id/payments', auth, invoiceController.logPayment);
+
+// Add new payment logging route
+router.post('/api/invoices/:id/payments', auth, invoiceController.logPayment);
+
+// Invoice statistics
 
 // Send invoice via email
 router.post('/:id/send', auth, invoiceController.sendInvoice);
 
 // Track invoice view (public endpoint)
 router.get('/track/:trackingId', invoiceController.trackInvoiceView);
-
-// Get invoice statistics
-router.get('/stats',auth, invoiceController.getInvoiceStats);
 
 module.exports = router;
