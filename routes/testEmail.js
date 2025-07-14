@@ -6,7 +6,7 @@ const {
 } = require("../controllers/testEmailController");
 const auth = require("../middleware/auth");
 const Email = require("../models/Email");
-const createNotification = require("../controllers/notificationController");
+const {createNotification} = require("../controllers/notificationController");
 
 // @route   GET /api/email/test/connection
 // @desc    Test SMTP connection
