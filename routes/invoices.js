@@ -3,7 +3,6 @@ const router = express.Router();
 const invoiceController = require('../controllers/invoiceController');
 const  auth  = require('../middleware/auth');
 
-
 router.get('/stats', auth, invoiceController.getInvoiceStats);
 
 // Invoice routes
