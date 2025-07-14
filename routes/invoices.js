@@ -16,6 +16,9 @@ router
   .put(auth, invoiceController.updateInvoice)
   .delete(auth, invoiceController.deleteInvoice);
 
+// Log payment for an invoice
+router.post('/:id/payments', auth, invoiceController.logPayment);
+
 // Send invoice via email
 router.post('/:id/send', auth, invoiceController.sendInvoice);
 

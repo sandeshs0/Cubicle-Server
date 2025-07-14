@@ -7,6 +7,13 @@ const InvoiceItemSchema = new mongoose.Schema({
   amount: { type: Number, required: true }
 }, { _id: false });
 
+const PaymentSchema = new mongoose.Schema({
+  amount: { type: Number, required: true },
+  tip: { type: Number, default: 0 },
+  date: { type: Date, default: Date.now },
+  note: { type: String }
+}, { _id: false });
+
 const InvoiceSchema = new mongoose.Schema({
   // Basic Info
   invoiceNumber: { 
@@ -16,7 +23,7 @@ const InvoiceSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    enum: ['draft', 'sent', 'viewed', 'paid', 'overdue', 'cancelled'], 
+    enum: ['draft', 'sent', 'viewed','paid-partially', 'paid', 'overdue', 'cancelled'], 
     default: 'draft' 
   },
   
@@ -59,6 +66,7 @@ const InvoiceSchema = new mongoose.Schema({
   },
   
   // Financials
+  payments: [PaymentSchema], // log of payments
   items: [InvoiceItemSchema],
   subtotal: { 
     type: Number, 

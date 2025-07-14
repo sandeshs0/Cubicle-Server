@@ -394,7 +394,15 @@ exports.trackInvoiceView = async (req, res) => {
         message: 'Invoice not found'
       });
     }
-    
+    // Notify the invoice owner (in-app)
+    if (invoice.user) {
+      await createNotification({
+        user: invoice.user,
+        type: 'invoice_viewed',
+        message: `Invoice #${invoice.invoiceNumber} was viewed by the client`,
+        data: { invoiceId: invoice._id }
+      });
+    }
     // Return a transparent 1x1 pixel
     const pixel = Buffer.from(
       'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
@@ -523,5 +531,47 @@ exports.getInvoiceStats = async (req, res) => {
       message: 'Error fetching invoice statistics',
       error: error.message
     });
+  }
+};
+
+// @desc    Log a payment for an invoice
+// @route   POST /api/invoices/:id/payments
+// @access  Private
+const { createNotification } = require('../utils/notificationUtil');
+
+exports.logPayment = async (req, res) => {
+  try {
+    const { amount, tip = 0, note } = req.body;
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Amount is required and must be greater than 0.' });
+    }
+    const invoice = await Invoice.findById(req.params.id);
+    if (!invoice) {
+      return res.status(404).json({ success: false, message: 'Invoice not found.' });
+    }
+    // Add payment log
+    invoice.payments.push({ amount, tip, note });
+    // Calculate total paid (amount + tip for all payments)
+    const totalPaid = invoice.payments.reduce((sum, p) => sum + (p.amount || 0) + (p.tip || 0), 0);
+    // Update status
+    if (totalPaid >= invoice.total) {
+      invoice.status = 'paid';
+      invoice.paidAt = new Date();
+    } else if (totalPaid > 0) {
+      invoice.status = 'paid-partially';
+      invoice.paidAt = undefined;
+    }
+    await invoice.save();
+    // Notify the invoice owner
+    await createNotification({
+      user: invoice.user,
+      type: 'payment_logged',
+      message: `Payment of ${amount} logged for Invoice #${invoice.invoiceNumber}`,
+      data: { invoiceId: invoice._id, payment: { amount, tip, note } }
+    });
+    res.json({ success: true, message: 'Payment logged.', data: invoice });
+  } catch (err) {
+    console.error('Error logging payment:', err);
+    res.status(500).json({ success: false, message: 'Server error', error: err.message });
   }
 };
