@@ -55,7 +55,11 @@ exports.getClients = async (req, res) => {
 // @desc    Get single client
 // @route   GET /api/clients/:id
 // @access  Private
+const Project = require('../models/Project');
+const Invoice = require('../models/Invoice');
+
 exports.getClient = async (req, res) => {
+    console.log("Getting client for user:", req.user.id);
     try {
         const client = await Client.findOne({
             _id: req.params.id,
@@ -65,8 +69,19 @@ exports.getClient = async (req, res) => {
         if (!client) {
             return res.status(404).json({ msg: 'Client not found' });
         }
-
-        res.json(client);
+       
+        // Fetch related projects and invoices
+        const projects = await Project.find({ client: client._id, user: req.user.id });
+        const invoices = await Invoice.find({ client: client._id, user: req.user.id });
+        console.log(projects);
+        console.log(invoices);
+        console.log(client);
+        
+        res.json({
+            client,
+            projects,
+            invoices
+        });
     } catch (err) {
         console.error(err.message);
         if (err.kind === 'ObjectId') {

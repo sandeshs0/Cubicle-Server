@@ -19,7 +19,7 @@ router
 
 
 // Add new payment logging route
-router.post('/api/invoices/:id/payments', auth, invoiceController.logPayment);
+router.post('/:id/payments', auth, invoiceController.logPayment);
 
 // Invoice statistics
 
